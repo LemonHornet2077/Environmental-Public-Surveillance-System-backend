@@ -12,16 +12,32 @@ import (
 
 // JWT Claims 结构
 type Claims struct {
-	UserID   int64  `json:"user_id"`
-	UserType string `json:"user_type"` // "admin", "member", "supervisor"
+	UserID     int64  `json:"user_id"`     // 对于admin和member使用数字ID
+	UserTelID  string `json:"user_tel_id"` // 对于supervisor使用tel_id
+	UserType   string `json:"user_type"`   // "admin", "member", "supervisor"
 	jwt.RegisteredClaims
 }
 
-// 生成JWT Token
+// 生成JWT Token（用于admin和member）
 func generateToken(userID int64, userType string) (string, error) {
 	claims := Claims{
 		UserID:   userID,
 		UserType: userType,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(config.Config("JWT_SECRET")))
+}
+
+// 生成JWT Token（用于supervisor）
+func generateTokenForSupervisor(telID string) (string, error) {
+	claims := Claims{
+		UserTelID: telID,
+		UserType:  "supervisor",
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -304,9 +320,8 @@ func SupervisorLogin(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "手机号或密码错误"})
 	}
 
-	// 由于supervisor的ID是tel_id(string)，而我们的token生成函数需要int64，这里我们暂时传入0。
-	// 在实际应用中，可能需要调整token的payload或supervisor表结构。
-	token, err := generateToken(0, "supervisor")
+	// 使用专门为supervisor设计的token生成函数
+	token, err := generateTokenForSupervisor(supervisor.TelID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "生成token失败"})
 	}
@@ -318,4 +333,94 @@ func SupervisorLogin(c *fiber.Ctx) error {
 			"tel_id": supervisor.TelID,
 		},
 	})
+}
+
+// 管理员删除管理员
+func DeleteAdmin(c *fiber.Ctx) error {
+	adminID := c.Params("id")
+	if adminID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "缺少管理员ID"})
+	}
+
+	// 检查要删除的管理员是否存在
+	var count int
+	checkQuery := "SELECT COUNT(*) FROM admins WHERE admin_id = ?"
+	err := database.DB.QueryRow(checkQuery, adminID).Scan(&count)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "数据库查询失败"})
+	}
+
+	if count == 0 {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "管理员不存在"})
+	}
+
+	// 删除管理员
+	deleteQuery := "DELETE FROM admins WHERE admin_id = ?"
+	_, err = database.DB.Exec(deleteQuery, adminID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "删除管理员失败"})
+	}
+
+	return c.JSON(fiber.Map{"message": "管理员删除成功"})
+}
+
+// 管理员删除网格员
+func DeleteGridMember(c *fiber.Ctx) error {
+	memberID := c.Params("id")
+	if memberID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "缺少网格员ID"})
+	}
+
+	// 检查要删除的网格员是否存在
+	var count int
+	checkQuery := "SELECT COUNT(*) FROM grid_member WHERE gm_id = ?"
+	err := database.DB.QueryRow(checkQuery, memberID).Scan(&count)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "数据库查询失败"})
+	}
+
+	if count == 0 {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "网格员不存在"})
+	}
+
+	// 删除网格员
+	deleteQuery := "DELETE FROM grid_member WHERE gm_id = ?"
+	_, err = database.DB.Exec(deleteQuery, memberID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "删除网格员失败"})
+	}
+
+	return c.JSON(fiber.Map{"message": "网格员删除成功"})
+}
+
+// 公众监督员自行删除账户
+func DeleteSupervisorSelf(c *fiber.Ctx) error {
+	// 从 JWT token 中获取监督员的 tel_id
+	telID := c.Locals("user_tel_id")
+	if telID == nil || telID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "无法获取用户信息"})
+	}
+
+	telIDStr := telID.(string)
+
+	// 检查监督员是否存在
+	var count int
+	checkQuery := "SELECT COUNT(*) FROM supervisor WHERE tel_id = ?"
+	err := database.DB.QueryRow(checkQuery, telIDStr).Scan(&count)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "数据库查询失败"})
+	}
+
+	if count == 0 {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "监督员不存在"})
+	}
+
+	// 删除监督员账户
+	deleteQuery := "DELETE FROM supervisor WHERE tel_id = ?"
+	_, err = database.DB.Exec(deleteQuery, telIDStr)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "删除账户失败"})
+	}
+
+	return c.JSON(fiber.Map{"message": "账户删除成功"})
 }

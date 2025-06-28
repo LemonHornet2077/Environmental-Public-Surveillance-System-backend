@@ -26,6 +26,14 @@ func SetupRoutes(app *fiber.App) {
 	// 管理员功能
 	adminProtected.Post("/add", handlers.AddAdmin)
 	adminProtected.Post("/member/add", handlers.AddGridMember)
+	adminProtected.Delete("/delete/:id", handlers.DeleteAdmin)
+	adminProtected.Delete("/member/delete/:id", handlers.DeleteGridMember)
+
+	// 监督员自行删除账户的路由
+	supervisorProtected := api.Group("/supervisor")
+	supervisorProtected.Use(handlers.JWTMiddleware)
+	supervisorProtected.Use(handlers.SupervisorOnly)
+	supervisorProtected.Delete("/delete", handlers.DeleteSupervisorSelf)
 
 	// 健康检查
 	api.Get("/health", func(c *fiber.Ctx) error {

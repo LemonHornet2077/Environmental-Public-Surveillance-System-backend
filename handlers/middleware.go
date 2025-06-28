@@ -39,6 +39,7 @@ func JWTMiddleware(c *fiber.Ctx) error {
 	// 将claims存储到context中
 	if claims, ok := token.Claims.(*Claims); ok {
 		c.Locals("user_id", claims.UserID)
+		c.Locals("user_tel_id", claims.UserTelID)
 		c.Locals("user_type", claims.UserType)
 	}
 
@@ -51,6 +52,17 @@ func AdminOnly(c *fiber.Ctx) error {
 	if userType != "admin" {
 		return c.Status(403).JSON(fiber.Map{
 			"error": "需要管理员权限",
+		})
+	}
+	return c.Next()
+}
+
+// 监督员权限中间件
+func SupervisorOnly(c *fiber.Ctx) error {
+	userType := c.Locals("user_type")
+	if userType != "supervisor" {
+		return c.Status(403).JSON(fiber.Map{
+			"error": "需要监督员权限",
 		})
 	}
 	return c.Next()
