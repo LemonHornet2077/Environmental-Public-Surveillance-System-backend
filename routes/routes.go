@@ -28,12 +28,26 @@ func SetupRoutes(app *fiber.App) {
 	adminProtected.Post("/member/add", handlers.AddGridMember)
 	adminProtected.Delete("/delete/:id", handlers.DeleteAdmin)
 	adminProtected.Delete("/member/delete/:id", handlers.DeleteGridMember)
+	
+	// 获取用户信息接口
+	adminProtected.Get("/info", handlers.GetCurrentAdmin)
+	adminProtected.Get("/list", handlers.GetAdminList)
+	adminProtected.Get("/member/list", handlers.GetGridMemberList)
+	adminProtected.Get("/supervisor/list", handlers.GetSupervisorList)
+	adminProtected.Delete("/supervisor/delete/:tel_id", handlers.DeleteSupervisor)
+	
+	// 获取反馈数据接口
+	adminProtected.Get("/feedback/list", handlers.GetAllFeedbacks)
+	
+	// 获取已确认AQI信息接口
+	adminProtected.Get("/aqi/confirmed/list", handlers.GetAllConfirmedAQI)
 
-	// 监督员自行删除账户的路由
+	// 监督员相关路由
 	supervisorProtected := api.Group("/supervisor")
 	supervisorProtected.Use(handlers.JWTMiddleware)
 	supervisorProtected.Use(handlers.SupervisorOnly)
 	supervisorProtected.Delete("/delete", handlers.DeleteSupervisorSelf)
+	supervisorProtected.Get("/feedback/list", handlers.GetSupervisorFeedbacks)
 
 	// 健康检查
 	api.Get("/health", func(c *fiber.Ctx) error {

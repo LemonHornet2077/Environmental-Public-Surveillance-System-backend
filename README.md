@@ -73,9 +73,17 @@
 - `POST /api/v1/admin/member/add`: 添加新网格员
 - `DELETE /api/v1/admin/delete/:id`: 删除管理员
 - `DELETE /api/v1/admin/member/delete/:id`: 删除网格员
+- `GET /api/v1/admin/info`: 获取当前登录管理员信息
+- `GET /api/v1/admin/list`: 获取所有管理员列表
+- `GET /api/v1/admin/member/list`: 获取所有网格员列表
+- `GET /api/v1/admin/supervisor/list`: 获取所有公众监督员列表
+- `DELETE /api/v1/admin/supervisor/delete/:tel_id`: 管理员删除公众监督员
+- `GET /api/v1/admin/feedback/list`: 获取所有公众反馈数据列表
+- `GET /api/v1/admin/aqi/confirmed/list`: 获取所有网格员确认后的AQI信息列表
 
 ### 监督员路由 (需要监督员JWT认证)
 - `DELETE /api/v1/supervisor/delete`: 监督员自行删除账户
+- `GET /api/v1/supervisor/feedback/list`: 监督员查看自己的所有反馈数据
 
 ## 如何运行
 
