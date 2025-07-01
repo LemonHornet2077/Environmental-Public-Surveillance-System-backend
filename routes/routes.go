@@ -11,7 +11,22 @@ func SetupRoutes(app *fiber.App) {
 	// API版本前缀
 	api := app.Group("/api/v1")
 
-	// 公开路由（不需要认证）
+	// 公开路由
+	api.Get("/health", handlers.HealthCheck)
+
+	// 所有角色共用的公共路由
+	public := api.Group("/public")
+	{
+		// AQI相关
+		public.Get("/aqi/list", handlers.GetAQIList)
+		public.Get("/aqi/confirmed/list", handlers.GetAllConfirmedAQI)
+
+		// 位置信息相关
+		public.Get("/location/provinces", handlers.GetProvinces)
+		public.Get("/location/cities/:province_id", handlers.GetCities)
+	}
+
+	// 认证相关路由
 	auth := api.Group("/auth")
 	auth.Post("/admin/login", handlers.AdminLogin)
 	auth.Post("/member/login", handlers.GridMemberLogin)
@@ -36,11 +51,20 @@ func SetupRoutes(app *fiber.App) {
 	adminProtected.Get("/supervisor/list", handlers.GetSupervisorList)
 	adminProtected.Delete("/supervisor/delete/:tel_id", handlers.DeleteSupervisor)
 	
-	// 获取反馈数据接口
-	adminProtected.Get("/feedback/list", handlers.GetAllFeedbacks)
-	
-	// 获取已确认AQI信息接口
-	adminProtected.Get("/aqi/confirmed/list", handlers.GetAllConfirmedAQI)
+	// 管理员路由组
+	adminGroup := adminProtected.Group("")
+	{
+		// AQI相关
+		adminGroup.Get("/aqi/confirmed/list", handlers.GetAllConfirmedAQI)
+
+		// 反馈相关
+		adminGroup.Get("/feedback/list", handlers.GetAllFeedbacks)
+		adminGroup.Post("/feedback/assign", handlers.AssignFeedback)
+
+		// 位置信息相关
+		adminGroup.Get("/location/provinces", handlers.GetProvinces)
+		adminGroup.Get("/location/cities/:province_id", handlers.GetCities)
+	}
 
 	// 监督员相关路由
 	supervisorProtected := api.Group("/supervisor")
@@ -48,6 +72,7 @@ func SetupRoutes(app *fiber.App) {
 	supervisorProtected.Use(handlers.SupervisorOnly)
 	supervisorProtected.Delete("/delete", handlers.DeleteSupervisorSelf)
 	supervisorProtected.Get("/feedback/list", handlers.GetSupervisorFeedbacks)
+	supervisorProtected.Post("/feedback/submit", handlers.SubmitFeedback)
 
 	// 健康检查
 	api.Get("/health", func(c *fiber.Ctx) error {

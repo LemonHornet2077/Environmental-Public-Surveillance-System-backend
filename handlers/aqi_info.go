@@ -10,8 +10,12 @@ import (
 
 // GetAllConfirmedAQI 获取所有网格员确认后的AQI信息列表
 func GetAllConfirmedAQI(c *fiber.Ctx) error {
-	// 查询所有已确认的AQI信息，包括关联的省市、网格员和监督员信息
-	query := `
+	// 获取查询参数
+	provinceID := c.Query("province_id")
+	cityID := c.Query("city_id")
+
+	// 构建基础查询
+	baseQuery := `
 		SELECT 
 			s.id, s.province_id, s.city_id, s.address, 
 			s.so2_value, s.so2_level, s.co_value, s.co_level, 
@@ -34,11 +38,34 @@ func GetAllConfirmedAQI(c *fiber.Ctx) error {
 			supervisor sup ON s.fd_id = sup.tel_id
 		LEFT JOIN 
 			aqi a ON s.aqi_id = a.aqi_id
-		ORDER BY 
-			s.id DESC
 	`
 
-	rows, err := database.DB.Query(query)
+	// 添加筛选条件
+	whereClause := ""
+	params := []interface{}{}
+
+	if provinceID != "" {
+		whereClause += " WHERE s.province_id = ?"
+		params = append(params, provinceID)
+
+		if cityID != "" {
+			whereClause += " AND s.city_id = ?"
+			params = append(params, cityID)
+		}
+	}
+
+	// 完整查询
+	query := baseQuery + whereClause + " ORDER BY s.id DESC"
+
+	var rows *sql.Rows
+	var err error
+
+	if len(params) > 0 {
+		rows, err = database.DB.Query(query, params...)
+	} else {
+		rows, err = database.DB.Query(query)
+	}
+
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "获取已确认AQI信息列表失败",

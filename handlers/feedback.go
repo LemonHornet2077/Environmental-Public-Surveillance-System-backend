@@ -10,8 +10,12 @@ import (
 
 // GetAllFeedbacks 获取所有公众反馈数据列表
 func GetAllFeedbacks(c *fiber.Ctx) error {
-	// 查询所有反馈信息，包括关联的省市和网格员信息
-	query := `
+	// 获取查询参数
+	provinceID := c.Query("province_id")
+	cityID := c.Query("city_id")
+
+	// 构建基础查询
+	baseQuery := `
 		SELECT 
 			af.af_id, af.tel_id, af.province_id, af.city_id, af.address, 
 			af.information, af.estimated_grade, af.af_date, af.af_time, 
@@ -28,14 +32,38 @@ func GetAllFeedbacks(c *fiber.Ctx) error {
 			supervisor s ON af.tel_id = s.tel_id
 		LEFT JOIN 
 			grid_member gm ON af.gm_id = gm.gm_id
-		ORDER BY 
-			af.af_id DESC
 	`
 
-	rows, err := database.DB.Query(query)
+	// 添加筛选条件
+	whereClause := ""
+	params := []interface{}{}
+
+	if provinceID != "" {
+		whereClause += " WHERE af.province_id = ?"
+		params = append(params, provinceID)
+
+		if cityID != "" {
+			whereClause += " AND af.city_id = ?"
+			params = append(params, cityID)
+		}
+	}
+
+	// 完整查询
+	query := baseQuery + whereClause + " ORDER BY af.af_id DESC"
+
+	var rows *sql.Rows
+	var err error
+
+	if len(params) > 0 {
+		rows, err = database.DB.Query(query, params...)
+	} else {
+		rows, err = database.DB.Query(query)
+	}
+
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "获取反馈列表失败",
+			"details": err.Error(),
 		})
 	}
 	defer rows.Close()

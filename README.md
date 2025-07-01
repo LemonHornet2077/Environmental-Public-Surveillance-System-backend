@@ -1,5 +1,4 @@
 # Environmental-Public-Surveillance-System-backend
-环保公众监督系统的后端
 
 ## 项目简介
 
@@ -52,6 +51,25 @@
   - 可以自行注册和登录。
   - 可以删除自己的账户。
 
+### 公众反馈与任务指派
+
+系统实现了完整的公众反馈和任务指派流程：
+
+- **反馈提交**
+  - 公众监督员可以提交环保相关反馈，包含地理位置、详细信息和预估空气质量等级。
+  - 提交的反馈初始状态为“未指派”(state=0)。
+
+- **任务指派**
+  - 管理员可以将未处理的反馈指派给网格员处理。
+  - 支持本地指派：优先将反馈指派给同一地区的网格员。
+  - 支持异地指派：当本地网格员人数不足时，可指派给其他地区的网格员。
+  - 指派时会记录指派日期、时间和备注信息。
+  - 指派后反馈状态变为“已指派”(state=1)。
+
+- **数据完整性**
+  - 使用数据库事务确保指派过程的原子性和数据一致性。
+  - 指派前进行多重验证，包括反馈和网格员存在性、状态检查、区域匹配等。
+
 ### 安全
 - 使用 JWT (JSON Web Token) 进行无状态认证。
 - 通过中间件实现严格的路由权限控制。
@@ -62,7 +80,16 @@
 ### 健康检查
 - `GET /api/v1/health`: 检查服务是否正常运行。
 
-### 公开路由 (无需认证)
+### 公共接口（所有角色可访问）
+
+- `GET /api/v1/health`: 系统健康状态检查
+- `GET /api/v1/public/aqi/list`: 获取所有空气质量指数级别数据
+- `GET /api/v1/public/aqi/confirmed/list`: 获取所有已确认的AQI信息
+- `GET /api/v1/public/location/provinces`: 获取所有省份列表
+- `GET /api/v1/public/location/cities/:province_id`: 获取指定省份的城市列表
+
+### 认证相关
+
 - `POST /api/v1/auth/admin/login`: 管理员登录
 - `POST /api/v1/auth/member/login`: 网格员登录
 - `POST /api/v1/auth/supervisor/register`: 公众监督员注册
@@ -78,12 +105,16 @@
 - `GET /api/v1/admin/member/list`: 获取所有网格员列表
 - `GET /api/v1/admin/supervisor/list`: 获取所有公众监督员列表
 - `DELETE /api/v1/admin/supervisor/delete/:tel_id`: 管理员删除公众监督员
-- `GET /api/v1/admin/feedback/list`: 获取所有公众反馈数据列表
-- `GET /api/v1/admin/aqi/confirmed/list`: 获取所有网格员确认后的AQI信息列表
+- `GET /api/v1/admin/feedback/list`: 获取所有公众反馈数据列表，支持通过province_id和city_id参数筛选
+- `POST /api/v1/admin/feedback/assign`: 将公众反馈任务指派给网格员，支持本地和异地指派
+- `GET /api/v1/admin/aqi/confirmed/list`: 获取所有网格员确认后的AQI信息列表，支持通过province_id和city_id参数筛选
+- `GET /api/v1/admin/location/provinces`: 获取所有省份列表
+- `GET /api/v1/admin/location/cities/:province_id`: 获取指定省份的城市列表
 
 ### 监督员路由 (需要监督员JWT认证)
 - `DELETE /api/v1/supervisor/delete`: 监督员自行删除账户
 - `GET /api/v1/supervisor/feedback/list`: 监督员查看自己的所有反馈数据
+- `POST /api/v1/supervisor/feedback/submit`: 监督员提交反馈数据
 
 ## 如何运行
 
