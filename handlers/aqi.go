@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"epss-backend/database"
+	"epss-backend/models"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -30,26 +31,13 @@ func GetAQIList(c *fiber.Ctx) error {
 	// 构建AQI列表
 	var aqiList []fiber.Map
 	for rows.Next() {
-		var (
-			aqiID          int
-			chineseExplain string
-			aqiExplain     string
-			color          string
-			healthImpact   string
-			takeSteps      string
-			so2Min         int
-			so2Max         int
-			coMin          int
-			coMax          int
-			spmMin         int
-			spmMax         int
-			remarks        string
-		)
+		// 使用models.Aqi结构体
+		var aqi models.Aqi
 
 		err := rows.Scan(
-			&aqiID, &chineseExplain, &aqiExplain, &color,
-			&healthImpact, &takeSteps,
-			&so2Min, &so2Max, &coMin, &coMax, &spmMin, &spmMax, &remarks,
+			&aqi.AqiID, &aqi.ChineseExplain, &aqi.AqiExplain, &aqi.Color,
+			&aqi.HealthImpact, &aqi.TakeSteps,
+			&aqi.SO2Min, &aqi.SO2Max, &aqi.COMin, &aqi.COMax, &aqi.SPMMin, &aqi.SPMMax, &aqi.Remarks,
 		)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -60,19 +48,19 @@ func GetAQIList(c *fiber.Ctx) error {
 		}
 
 		aqiList = append(aqiList, fiber.Map{
-			"aqi_id":          aqiID,
-			"chinese_explain": chineseExplain,
-			"aqi_explain":     aqiExplain,
-			"color":           color,
-			"health_impact":   healthImpact,
-			"take_steps":      takeSteps,
-			"so2_min":         so2Min,
-			"so2_max":         so2Max,
-			"co_min":          coMin,
-			"co_max":          coMax,
-			"spm_min":         spmMin,
-			"spm_max":         spmMax,
-			"remarks":         remarks,
+			"aqi_id":          aqi.AqiID,
+			"chinese_explain": aqi.ChineseExplain,
+			"aqi_explain":     aqi.AqiExplain,
+			"color":           aqi.Color,
+			"health_impact":   aqi.HealthImpact,
+			"take_steps":      aqi.TakeSteps,
+			"so2_min":         aqi.SO2Min,
+			"so2_max":         aqi.SO2Max,
+			"co_min":          aqi.COMin,
+			"co_max":          aqi.COMax,
+			"spm_min":         aqi.SPMMin,
+			"spm_max":         aqi.SPMMax,
+			"remarks":         aqi.Remarks.String, // 使用String属性获取值
 		})
 	}
 

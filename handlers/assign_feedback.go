@@ -15,6 +15,7 @@ func AssignFeedback(c *fiber.Ctx) error {
         FeedbackID    int    `json:"feedback_id"`
         GridMemberID  int    `json:"grid_member_id"`
         Remarks       string `json:"remarks"`
+        RemoteAssign  bool   `json:"remote_assign"` // 是否允许异地指派
     }
     
     if err := c.BodyParser(&req); err != nil {
@@ -96,10 +97,10 @@ func AssignFeedback(c *fiber.Ctx) error {
         })
     }
     
-    // 3. 检查网格员负责区域是否与反馈信息区域匹配
-    if gridMember.ProvinceID != feedback.ProvinceID || gridMember.CityID != feedback.CityID {
+    // 3. 检查网格员负责区域是否与反馈信息区域匹配（如果不是异地指派）
+    if !req.RemoteAssign && (gridMember.ProvinceID != feedback.ProvinceID || gridMember.CityID != feedback.CityID) {
         return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-            "error": "网格员负责区域与反馈信息区域不匹配",
+            "error": "网格员负责区域与反馈信息区域不匹配，如需异地指派请开启异地指派选项",
         })
     }
     
@@ -126,13 +127,13 @@ func AssignFeedback(c *fiber.Ctx) error {
     
     // 返回成功响应
     return c.JSON(fiber.Map{
-        "success": true,
-        "message": "任务已成功指派给网格员",
         "data": fiber.Map{
             "feedback_id": req.FeedbackID,
             "grid_member_id": req.GridMemberID,
             "assign_date": assignDate,
             "assign_time": assignTime,
+            "success": true,
+            "message": "任务已成功指派给网格员",    
         },
     })
 }

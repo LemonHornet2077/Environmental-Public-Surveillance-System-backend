@@ -64,15 +64,30 @@ func SetupRoutes(app *fiber.App) {
 		// 位置信息相关
 		adminGroup.Get("/location/provinces", handlers.GetProvinces)
 		adminGroup.Get("/location/cities/:province_id", handlers.GetCities)
+
+		// 统计数据相关
+		adminGroup.Get("/stats/province", handlers.GetProvinceAQIStats)
+		adminGroup.Get("/stats/aqi-level", handlers.GetAQILevelStats)
+		adminGroup.Get("/stats/aqi-trend", handlers.GetAQITrendStats)
+		adminGroup.Get("/stats/aqi-realtime", handlers.GetAQIRealtimeStats)
 	}
 
 	// 监督员相关路由
 	supervisorProtected := api.Group("/supervisor")
 	supervisorProtected.Use(handlers.JWTMiddleware)
 	supervisorProtected.Use(handlers.SupervisorOnly)
+	supervisorProtected.Get("/info", handlers.GetCurrentSupervisor) // 获取当前登录的监督员信息
 	supervisorProtected.Delete("/delete", handlers.DeleteSupervisorSelf)
 	supervisorProtected.Get("/feedback/list", handlers.GetSupervisorFeedbacks)
 	supervisorProtected.Post("/feedback/submit", handlers.SubmitFeedback)
+
+	// 网格员相关路由
+	memberProtected := api.Group("/member")
+	memberProtected.Use(handlers.JWTMiddleware)
+	memberProtected.Use(handlers.GridMemberOnly)
+	memberProtected.Get("/info", handlers.GetCurrentGridMember) // 获取当前登录的网格员信息
+	memberProtected.Get("/feedback/list", handlers.GetGridMemberFeedbacks) // 获取分配给当前网格员的反馈任务
+	memberProtected.Post("/aqi/submit", handlers.SubmitAQIMeasurement) // 提交实测的AQI数据
 
 	// 健康检查
 	api.Get("/health", func(c *fiber.Ctx) error {

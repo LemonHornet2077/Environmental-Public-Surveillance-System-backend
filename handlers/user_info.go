@@ -3,9 +3,54 @@ package handlers
 import (
 	"epss-backend/database"
 	"epss-backend/models"
+	"fmt"
 
 	"github.com/gofiber/fiber/v2"
 )
+
+// GetCurrentSupervisor 获取当前登录的公众监督员信息
+func GetCurrentSupervisor(c *fiber.Ctx) error {
+	// 从JWT中获取监督员的tel_id
+	telID := c.Locals("user_tel_id")
+	if telID == nil || telID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "未授权访问",
+		})
+	}
+
+	telIDStr := telID.(string)
+
+	// 查询监督员信息，使用IFNULL处理可能为NULL的字段
+	query := `SELECT 
+		tel_id, 
+		IFNULL(real_name, '') as real_name, 
+		IFNULL(birthday, '') as birthday, 
+		IFNULL(sex, 1) as sex, 
+		IFNULL(remarks, '') as remarks 
+	FROM supervisor WHERE tel_id = ?`
+
+	var telID2, realName, birthday, remarks string
+	var sex int
+
+	err := database.DB.QueryRow(query, telIDStr).Scan(
+		&telID2, &realName, &birthday, &sex, &remarks,
+	)
+
+	if err != nil {
+		
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": fmt.Sprintf("获取监督员信息失败: %v", err),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"tel_id": telID2,
+		"real_name": realName,
+		"birthday": birthday,
+		"sex": sex,
+		"remarks": remarks,
+	})
+}
 
 // GetCurrentAdmin 获取当前登录的管理员信息
 func GetCurrentAdmin(c *fiber.Ctx) error {
@@ -162,6 +207,55 @@ func GetSupervisorList(c *fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{
 		"data": supervisorList,
+	})
+}
+
+// GetCurrentGridMember 获取当前登录的网格员信息
+func GetCurrentGridMember(c *fiber.Ctx) error {
+	// 从JWT中获取网格员ID
+	userID := c.Locals("user_id")
+	if userID == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "未授权访问",
+		})
+	}
+
+	// 查询网格员信息，包括省份和城市名称
+	query := `
+		SELECT gm.gm_id, gm.gm_name, gm.gm_code, gm.province_id, gm.city_id, 
+		       gm.tel, gm.state, IFNULL(gm.remarks, '') as remarks,
+		       p.province_name, c.city_name
+		FROM grid_member gm
+		LEFT JOIN grid_province p ON gm.province_id = p.province_id
+		LEFT JOIN grid_city c ON gm.city_id = c.city_id
+		WHERE gm.gm_id = ?
+	`
+
+	var member models.GridMember
+	var provinceName, cityName string
+	err := database.DB.QueryRow(query, userID).Scan(
+		&member.GmID, &member.GmName, &member.GmCode, &member.ProvinceID, &member.CityID,
+		&member.Tel, &member.State, &member.Remarks,
+		&provinceName, &cityName,
+	)
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": fmt.Sprintf("获取网格员信息失败: %v", err),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"id":            member.GmID,
+		"member_code":   member.GmCode,
+		"real_name":     member.GmName,
+		"province_id":   member.ProvinceID,
+		"city_id":       member.CityID,
+		"province_name": provinceName,
+		"city_name":     cityName,
+		"tel":           member.Tel,
+		"state":         member.State,
+		"remarks":       member.Remarks.String,
 	})
 }
 

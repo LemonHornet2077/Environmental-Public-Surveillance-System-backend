@@ -67,3 +67,21 @@ func SupervisorOnly(c *fiber.Ctx) error {
 	}
 	return c.Next()
 }
+
+// 网格员权限中间件
+func GridMemberOnly(c *fiber.Ctx) error {
+	userType := c.Locals("user_type")
+	if userType != "member" {
+		return c.Status(403).JSON(fiber.Map{
+			"error": "需要网格员权限",
+		})
+	}
+	
+	// 将用户ID存储为网格员ID
+	userID := c.Locals("user_id")
+	if userID != nil {
+		c.Locals("user_gm_id", userID)
+	}
+	
+	return c.Next()
+}

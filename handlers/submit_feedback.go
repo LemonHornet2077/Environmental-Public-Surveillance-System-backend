@@ -11,7 +11,7 @@ import (
 // SubmitFeedback 公众监督员提交反馈数据
 func SubmitFeedback(c *fiber.Ctx) error {
 	// 从JWT中获取监督员ID
-	telID := c.Locals("tel_id")
+	telID := c.Locals("user_tel_id")
 	if telID == nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "未授权访问",
